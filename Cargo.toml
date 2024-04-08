@@ -23,4 +23,4 @@ bevy = "0.13"
 # First person camera controller
 smooth-bevy-cameras = "0.11"
 # bevy_normal_material = "0.2.1"
-bevy_normal_material = { git = "https://github.com/AU-Master-Thesis/bevy_normal_material", branch = "bevy-v0.13.0" }
+# bevy_normal_material = { git = "https://github.com/AU-Master-Thesis/bevy_normal_material", branch = "bevy-v0.13.0" }

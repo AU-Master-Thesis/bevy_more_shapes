@@ -1,17 +1,9 @@
-use bevy::app::App;
-use bevy::asset::{AssetServer, Assets};
-// use bevy::input::Input;
-use bevy::math::Vec3;
 use bevy::pbr::wireframe::{WireframeConfig, WireframePlugin};
-use bevy::pbr::{AmbientLight, DirectionalLight, NotShadowCaster, PbrBundle, StandardMaterial};
+use bevy::pbr::NotShadowCaster;
 use bevy::prelude::*;
 use bevy::render::settings::{RenderCreation, WgpuFeatures, WgpuSettings};
 use bevy::render::RenderPlugin;
-use bevy::scene::ron::de;
-use bevy::text::{JustifyText, Text, TextStyle};
-use bevy::ui::{AlignSelf, PositionType, Style, Val};
 use bevy::window::{CursorGrabMode, PrimaryWindow};
-use bevy::DefaultPlugins;
 use bevy_more_shapes::torus::Torus;
 use bevy_more_shapes::tube::{Curve, Tube};
 use bevy_more_shapes::{Cone, Cylinder, Grid, Polygon};
