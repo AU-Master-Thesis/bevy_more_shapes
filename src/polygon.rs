@@ -1,10 +1,11 @@
-use std::error::Error;
-use std::fmt::{Display, Formatter};
 use bevy::math::{Rect, Vec2, Vec3};
 use bevy::prelude::Mesh;
 use bevy::render::mesh::{Indices, PrimitiveTopology};
-use triangulate::{ListFormat, TriangulationError, Vertex};
+use bevy::render::render_asset::RenderAssetUsages;
+use std::error::Error;
+use std::fmt::{Display, Formatter};
 use triangulate::formats::IndexedListFormat;
+use triangulate::{ListFormat, TriangulationError, Vertex};
 
 pub struct Polygon {
     /// Points on a path where the last and first point are connected to form a closed circle.
@@ -98,12 +99,14 @@ impl Display for InvalidInput {
     }
 }
 
-impl Error for InvalidInput { }
+impl Error for InvalidInput {}
 
 impl<T: Error> From<TriangulationError<T>> for InvalidInput {
     fn from(value: TriangulationError<T>) -> Self {
         match value {
-            TriangulationError::TrapezoidationError(_) => panic!("Failed to triangulate: {}", value),
+            TriangulationError::TrapezoidationError(_) => {
+                panic!("Failed to triangulate: {}", value)
+            }
             TriangulationError::NoVertices => Self,
             TriangulationError::InternalError(_) => Self,
             TriangulationError::FanBuilder(_) => panic!("Failed to triangulate: {}", value),
@@ -113,11 +116,9 @@ impl<T: Error> From<TriangulationError<T>> for InvalidInput {
 }
 
 impl TryFrom<Polygon> for Mesh {
-
     type Error = InvalidInput;
 
     fn try_from(polygon: Polygon) -> Result<Self, Self::Error> {
-
         if polygon.points.len() < 3 {
             return Err(InvalidInput);
         }
@@ -150,18 +151,22 @@ impl TryFrom<Polygon> for Mesh {
         let mut output = Vec::<[usize; 3]>::new();
         let format = IndexedListFormat::new(&mut output).into_fan_format();
         triangulate::Polygon::triangulate(&polygons, format)?;
-        let indices = output.into_iter()
+        let indices = output
+            .into_iter()
             .map(|[a, b, c]| [c, b, a])
             .flatten()
             .map(|v| v as u32)
             .collect();
 
         // Put the mesh together
-        let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+        let mut mesh = Mesh::new(
+            PrimitiveTopology::TriangleList,
+            RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD,
+        );
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
         mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
         mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
-        mesh.set_indices(Some(Indices::U32(indices)));
+        mesh.insert_indices(Indices::U32(indices));
         Ok(mesh)
     }
 }

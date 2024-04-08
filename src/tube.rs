@@ -1,11 +1,11 @@
-use std::ops::{Deref, Sub};
+use crate::util::{Extent, FlatTrapezeIndices};
+use crate::MeshData;
 use bevy::prelude::{Mesh, Quat, Vec2, Vec3};
 use bevy::render::mesh::{Indices, PrimitiveTopology};
-use crate::MeshData;
-use crate::util::{Extent, FlatTrapezeIndices};
+use bevy::render::render_asset::RenderAssetUsages;
+use std::ops::{Deref, Sub};
 
 pub trait Curve {
-
     /// Evaluate the curve at some point along it.
     fn eval_at(&self, t: f32) -> Vec3;
 
@@ -70,7 +70,6 @@ struct FrenetSerretFrame {
 }
 
 fn initial_normal(tangent: Vec3) -> Vec3 {
-
     // Select initial normal in the direction of the minimum component of the tangent
     let mut min = f32::MAX;
     let tx = tangent.x.abs();
@@ -95,7 +94,6 @@ fn initial_normal(tangent: Vec3) -> Vec3 {
 }
 
 fn initial_frame(curve: &dyn Curve) -> FrenetSerretFrame {
-
     let origin = curve.eval_at(0.0);
     let tangent = curve.tangent_at(0.0);
     let normal = initial_normal(tangent);
@@ -110,16 +108,14 @@ fn initial_frame(curve: &dyn Curve) -> FrenetSerretFrame {
 }
 
 fn calculate_frames(curve: &dyn Curve, num_frames: u32) -> Vec<FrenetSerretFrame> {
-
     let mut out = Vec::with_capacity(num_frames as usize);
     let step = 1.0 / (num_frames - 1) as f32;
-    
+
     // First frame is different
     out.push(initial_frame(curve));
 
     // Calculate a smoothly shifting coordinate frame for each segment point
     for i in 1..num_frames {
-
         let t = step * i as f32;
         let prev_frame: &FrenetSerretFrame = out.get(i as usize - 1).unwrap(); // unwrap: i starts at 1
 
@@ -148,19 +144,24 @@ fn calculate_frames(curve: &dyn Curve, num_frames: u32) -> Vec<FrenetSerretFrame
     // If the curve is closed, make the frames line up
     let start_end_distance = curve.eval_at(0.0).sub(curve.eval_at(1.0)).length();
     if start_end_distance <= 2.0 * f32::EPSILON {
-
         let first_frame = out.get(0).unwrap(); // unwrap: We have >= 1 segment
         let last_frame = out.last().unwrap(); // unwrap: We have >= 1 segment
 
         // Post-process the frames
         let discrepancy_theta = {
-            let t = first_frame.normal.dot(last_frame.normal)
+            let t = first_frame
+                .normal
+                .dot(last_frame.normal)
                 .clamp(-1.0, 1.0)
-                .acos() / (num_frames - 1) as f32;
-            if first_frame.tangent.dot(first_frame.normal.cross(last_frame.normal)) > 0.0 {
+                .acos()
+                / (num_frames - 1) as f32;
+            if first_frame
+                .tangent
+                .dot(first_frame.normal.cross(last_frame.normal))
+                > 0.0
+            {
                 -t
-            }
-            else {
+            } else {
                 t
             }
         };
@@ -183,8 +184,10 @@ fn normalize_frames(frames: &mut [FrenetSerretFrame]) {
     }
     let center = extent.center();
     let lengths = extent.lengths().to_array();
-    let scale = 1.0 / lengths.iter()
-        .fold(f32::MIN, |a, b| f32::max(a, f32::abs(*b)));
+    let scale = 1.0
+        / lengths
+            .iter()
+            .fold(f32::MIN, |a, b| f32::max(a, f32::abs(*b)));
     for frame in frames.iter_mut() {
         frame.origin -= center;
         frame.origin *= scale;
@@ -192,7 +195,6 @@ fn normalize_frames(frames: &mut [FrenetSerretFrame]) {
 }
 
 fn add_tube_segment(mesh: &mut MeshData, frame: &FrenetSerretFrame, tube: &Tube, index: usize) {
-
     let angle_step = tube.radial_circumference / tube.radial_segments as f32;
 
     for i in 0..=tube.radial_segments {
@@ -204,7 +206,7 @@ fn add_tube_segment(mesh: &mut MeshData, frame: &FrenetSerretFrame, tube: &Tube,
         let position = frame.origin + tube.radius * normal;
         let uv = Vec2::new(
             index as f32 / tube.length_segments as f32,
-            i as f32 / tube.radial_segments as f32
+            i as f32 / tube.radial_segments as f32,
         );
 
         mesh.normals.push(normal);
@@ -214,7 +216,6 @@ fn add_tube_segment(mesh: &mut MeshData, frame: &FrenetSerretFrame, tube: &Tube,
 }
 
 fn add_ribbon_segment(mesh: &mut MeshData, frame: &FrenetSerretFrame, tube: &Tube, index: usize) {
-
     let theta = tube.radial_offset + std::f32::consts::FRAC_PI_2;
     let sin = theta.sin();
     let cos = -theta.cos();
@@ -226,14 +227,10 @@ fn add_ribbon_segment(mesh: &mut MeshData, frame: &FrenetSerretFrame, tube: &Tub
     mesh.normals.push(front_normal);
     mesh.positions.push(frame.origin + tube.radius * base);
     mesh.positions.push(frame.origin + tube.radius * -base);
-    mesh.uvs.push(Vec2::new(
-        index as f32 / tube.length_segments as f32,
-        0.0
-    ));
-    mesh.uvs.push(Vec2::new(
-        index as f32 / tube.length_segments as f32,
-        1.0
-    ));
+    mesh.uvs
+        .push(Vec2::new(index as f32 / tube.length_segments as f32, 0.0));
+    mesh.uvs
+        .push(Vec2::new(index as f32 / tube.length_segments as f32, 1.0));
 
     // Back
     if tube.radial_segments == 2 {
@@ -241,28 +238,25 @@ fn add_ribbon_segment(mesh: &mut MeshData, frame: &FrenetSerretFrame, tube: &Tub
         mesh.normals.push(-front_normal);
         mesh.positions.push(frame.origin + tube.radius * -base);
         mesh.positions.push(frame.origin + tube.radius * base);
-        mesh.uvs.push(Vec2::new(
-            index as f32 / tube.length_segments as f32,
-            0.0
-        ));
-        mesh.uvs.push(Vec2::new(
-            index as f32 / tube.length_segments as f32,
-            1.0
-        ));
+        mesh.uvs
+            .push(Vec2::new(index as f32 / tube.length_segments as f32, 0.0));
+        mesh.uvs
+            .push(Vec2::new(index as f32 / tube.length_segments as f32, 1.0));
     }
 }
 
 // Calculate the bounding box of this mesh and then shrink the mesh to fit into the unit box
 fn normalize_positions(positions: &mut [Vec3]) {
-
     let mut extent = Extent::new();
     for point in positions.iter() {
         extent.extend_to_include(*point);
     }
     let center = extent.center();
     let lengths = extent.lengths().to_array();
-    let scale = 1.0 / lengths.iter()
-        .fold(f32::MIN, |a, b| f32::max(a, f32::abs(*b)));
+    let scale = 1.0
+        / lengths
+            .iter()
+            .fold(f32::MIN, |a, b| f32::max(a, f32::abs(*b)));
     for point in positions.iter_mut() {
         *point -= center;
         *point *= scale;
@@ -272,11 +266,10 @@ fn normalize_positions(positions: &mut [Vec3]) {
 fn index_tube(mesh: &mut MeshData, tube: &Tube) {
     for j in 1..=tube.length_segments {
         for i in 1..=tube.radial_segments {
-
-            let a = ( tube.radial_segments + 1 ) * ( j - 1 ) + ( i - 1 );
-            let b = ( tube.radial_segments + 1 ) * j + ( i - 1 );
-            let c = ( tube.radial_segments + 1 ) * j + i;
-            let d = ( tube.radial_segments + 1 ) * ( j - 1 ) + i;
+            let a = (tube.radial_segments + 1) * (j - 1) + (i - 1);
+            let b = (tube.radial_segments + 1) * j + (i - 1);
+            let c = (tube.radial_segments + 1) * j + i;
+            let d = (tube.radial_segments + 1) * (j - 1) + i;
 
             // faces
             mesh.indices.push(a);
@@ -306,14 +299,12 @@ fn index_ribbon(mesh: &mut MeshData, tube: &Tube) {
 // The implementation of this algorithm is based on three.js.
 // https://github.com/mrdoob/three.js
 fn add_tube(mesh: &mut MeshData, tube: &Tube) {
-
     let mut frames = calculate_frames(tube.curve.deref(), tube.length_segments + 1);
     normalize_frames(frames.as_mut_slice());
     for (idx, frame) in frames.iter().enumerate() {
         if tube.radial_segments < 3 {
             add_ribbon_segment(mesh, frame, tube, idx);
-        }
-        else {
+        } else {
             add_tube_segment(mesh, frame, tube, idx);
         }
     }
@@ -321,14 +312,16 @@ fn add_tube(mesh: &mut MeshData, tube: &Tube) {
     // Generate indices for the faces
     if tube.radial_segments < 3 {
         index_ribbon(mesh, tube);
-    }
-    else {
+    } else {
         index_tube(mesh, tube);
     }
 }
 
 fn make_line(tube: &Tube) -> Mesh {
-    let mut m = Mesh::new(PrimitiveTopology::LineStrip);
+    let mut m = Mesh::new(
+        PrimitiveTopology::LineStrip,
+        RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD,
+    );
     let mut positions = Vec::with_capacity(tube.length_segments as usize + 1);
     let step = 1.0 / tube.length_segments as f32;
     for i in 0..=tube.length_segments {
@@ -343,27 +336,39 @@ fn make_line(tube: &Tube) -> Mesh {
 
 impl From<Tube> for Mesh {
     fn from(tube: Tube) -> Self {
-
-        assert!(tube.length_segments > 0, "Must have at least one length segment");
-        assert!(tube.radial_offset >= 0.0 && tube.radial_offset <= std::f32::consts::TAU, "Radial offset must be in [0, 2pi]");
-        assert!(tube.radial_circumference > 0.0 && tube.radial_circumference <= std::f32::consts::TAU, "Radial circumference must be in (0, 2pi]");
+        assert!(
+            tube.length_segments > 0,
+            "Must have at least one length segment"
+        );
+        assert!(
+            tube.radial_offset >= 0.0 && tube.radial_offset <= std::f32::consts::TAU,
+            "Radial offset must be in [0, 2pi]"
+        );
+        assert!(
+            tube.radial_circumference > 0.0 && tube.radial_circumference <= std::f32::consts::TAU,
+            "Radial circumference must be in (0, 2pi]"
+        );
 
         // Special case: Tube should be a line
         if tube.radius.abs() < f32::EPSILON || tube.radial_segments == 0 {
             return make_line(&tube);
         }
 
-        let num_vertices = (tube.length_segments + 1) as usize * (tube.radial_segments + 1) as usize;
+        let num_vertices =
+            (tube.length_segments + 1) as usize * (tube.radial_segments + 1) as usize;
         let num_indices = tube.length_segments as usize * tube.radial_segments as usize * 6;
         let mut mesh = MeshData::new(num_vertices, num_indices);
 
         add_tube(&mut mesh, &tube);
 
-        let mut m = Mesh::new(PrimitiveTopology::TriangleList);
+        let mut m = Mesh::new(
+            PrimitiveTopology::TriangleList,
+            RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD,
+        );
         m.insert_attribute(Mesh::ATTRIBUTE_POSITION, mesh.positions);
         m.insert_attribute(Mesh::ATTRIBUTE_NORMAL, mesh.normals);
         m.insert_attribute(Mesh::ATTRIBUTE_UV_0, mesh.uvs);
-        m.set_indices(Some(Indices::U32(mesh.indices)));
+        m.insert_indices(Indices::U32(mesh.indices));
         m
     }
 }

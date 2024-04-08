@@ -1,6 +1,7 @@
-use bevy::render::mesh::{Indices, Mesh};
-use bevy::render::render_resource::PrimitiveTopology;
 use crate::util::FlatTrapezeIndices;
+use bevy::render::mesh::{Indices, Mesh};
+use bevy::render::render_asset::RenderAssetUsages;
+use bevy::render::render_resource::PrimitiveTopology;
 
 pub struct Grid {
     /// Length along the x axis
@@ -19,7 +20,7 @@ impl Default for Grid {
             width: 1.0,
             height: 1.0,
             width_segments: 1,
-            height_segments: 1
+            height_segments: 1,
         }
     }
 }
@@ -30,14 +31,13 @@ impl Grid {
             width: length,
             height: length,
             width_segments: segments,
-            height_segments: segments
+            height_segments: segments,
         }
     }
 }
 
 impl From<Grid> for Mesh {
     fn from(grid: Grid) -> Self {
-
         // Validate input parameters
         assert!(grid.width_segments > 0, "A grid must have segments");
         assert!(grid.height_segments > 0, "A grid must have segments");
@@ -47,10 +47,10 @@ impl From<Grid> for Mesh {
         let num_points = (grid.height_segments + 1) * (grid.width_segments + 1);
         let num_faces = grid.height_segments * grid.width_segments;
 
-        let mut indices : Vec<u32> = Vec::with_capacity(6 * num_faces); // two triangles per rectangle
-        let mut positions : Vec<[f32; 3]> = Vec::with_capacity(num_points);
-        let mut uvs : Vec<[f32; 2]> = Vec::with_capacity(num_points);
-        let mut normals : Vec<[f32; 3]> = Vec::with_capacity(num_points);
+        let mut indices: Vec<u32> = Vec::with_capacity(6 * num_faces); // two triangles per rectangle
+        let mut positions: Vec<[f32; 3]> = Vec::with_capacity(num_points);
+        let mut uvs: Vec<[f32; 2]> = Vec::with_capacity(num_points);
+        let mut normals: Vec<[f32; 3]> = Vec::with_capacity(num_points);
 
         // This is used to center the grid on the origin
         let width_half = grid.width / 2.0;
@@ -67,9 +67,15 @@ impl From<Grid> for Mesh {
         // Generate vertices
         for z in 0..grid.height_segments + 1 {
             for x in 0..grid.width_segments + 1 {
-
-                positions.push([x as f32 * x_segment_len - width_half, 0.0, z as f32 * z_segment_len - height_half]);
-                uvs.push([x as f32 * width_segments_inv, z as f32 * height_segments_inv]);
+                positions.push([
+                    x as f32 * x_segment_len - width_half,
+                    0.0,
+                    z as f32 * z_segment_len - height_half,
+                ]);
+                uvs.push([
+                    x as f32 * width_segments_inv,
+                    z as f32 * height_segments_inv,
+                ]);
                 normals.push([0.0, 1.0, 0.0]);
             }
         }
@@ -77,7 +83,6 @@ impl From<Grid> for Mesh {
         // Generate indices
         for face_z in 0..grid.height_segments {
             for face_x in 0..grid.width_segments {
-
                 let lower_left = face_z * (grid.width_segments + 1) + face_x;
                 let face = FlatTrapezeIndices {
                     lower_left: lower_left as u32,
@@ -89,11 +94,14 @@ impl From<Grid> for Mesh {
             }
         }
 
-        let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+        let mut mesh = Mesh::new(
+            PrimitiveTopology::TriangleList,
+            RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD,
+        );
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
         mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
         mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
-        mesh.set_indices(Some(Indices::U32(indices)));
+        mesh.insert_indices(Indices::U32(indices));
         mesh
     }
 }

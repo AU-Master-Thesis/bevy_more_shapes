@@ -1,8 +1,9 @@
+use crate::util::FlatTrapezeIndices;
+use crate::MeshData;
 use bevy::math::Vec3;
 use bevy::prelude::{Mesh, Vec2};
 use bevy::render::mesh::{Indices, PrimitiveTopology};
-use crate::MeshData;
-use crate::util::FlatTrapezeIndices;
+use bevy::render::render_asset::RenderAssetUsages;
 
 pub struct Torus {
     /// The radius of the ring. Measured from the mesh's origin to the center line of the tube.
@@ -40,71 +41,105 @@ impl Default for Torus {
 
 impl From<Torus> for Mesh {
     fn from(torus: Torus) -> Mesh {
-
         // Input parameter validation
         assert!(torus.radius > 0.0, "The radii of a torus must be positive");
-        assert!(torus.tube_radius > 0.0, "The radii of a torus must be positive");
-        assert!(torus.radial_segments >= 3, "Must have at least 3 radial segments");
-        assert!(torus.tube_segments >= 3, "3 Must have at least 3 tube segments");
-        assert!(torus.radial_circumference > 0.0, "Radial circumference must be positive");
-        assert!(torus.tube_circumference > 0.0, "Tube circumference must be positive");
-        assert!(torus.radial_circumference <= std::f32::consts::TAU, "Radial circumference must not exceed 2pi radians");
-        assert!(torus.tube_circumference <= std::f32::consts::TAU, "Tube circumference must not exceed 2pi radians");
+        assert!(
+            torus.tube_radius > 0.0,
+            "The radii of a torus must be positive"
+        );
+        assert!(
+            torus.radial_segments >= 3,
+            "Must have at least 3 radial segments"
+        );
+        assert!(
+            torus.tube_segments >= 3,
+            "3 Must have at least 3 tube segments"
+        );
+        assert!(
+            torus.radial_circumference > 0.0,
+            "Radial circumference must be positive"
+        );
+        assert!(
+            torus.tube_circumference > 0.0,
+            "Tube circumference must be positive"
+        );
+        assert!(
+            torus.radial_circumference <= std::f32::consts::TAU,
+            "Radial circumference must not exceed 2pi radians"
+        );
+        assert!(
+            torus.tube_circumference <= std::f32::consts::TAU,
+            "Tube circumference must not exceed 2pi radians"
+        );
         if torus.radial_circumference < std::f32::consts::TAU {
-            assert!(torus.radial_offset >= 0.0, "Radial offset must be between 0 and 2pi");
-            assert!(torus.radial_offset <= std::f32::consts::TAU, "Radial offset must be between 0 and 2pi");
+            assert!(
+                torus.radial_offset >= 0.0,
+                "Radial offset must be between 0 and 2pi"
+            );
+            assert!(
+                torus.radial_offset <= std::f32::consts::TAU,
+                "Radial offset must be between 0 and 2pi"
+            );
         }
         if torus.tube_radius < std::f32::consts::TAU {
-            assert!(torus.tube_radius >= 0.0, "Tube offset must be between 0 and 2pi");
-            assert!(torus.tube_radius <= std::f32::consts::TAU, "Tube offset must be between 0 and 2pi");
+            assert!(
+                torus.tube_radius >= 0.0,
+                "Tube offset must be between 0 and 2pi"
+            );
+            assert!(
+                torus.tube_radius <= std::f32::consts::TAU,
+                "Tube offset must be between 0 and 2pi"
+            );
         }
 
         let num_vertices = (torus.radial_segments + 1) * (torus.tube_segments + 1);
         let mut mesh = MeshData {
             positions: Vec::with_capacity(num_vertices),
-            normals:  Vec::with_capacity(num_vertices),
+            normals: Vec::with_capacity(num_vertices),
             uvs: Vec::with_capacity(num_vertices),
             indices: Vec::with_capacity(torus.radial_segments * torus.tube_segments * 6),
         };
-        
+
         generate_torus_body(&mut mesh, &torus);
 
-        let mut m = Mesh::new(PrimitiveTopology::TriangleList);
+        let mut m = Mesh::new(
+            PrimitiveTopology::TriangleList,
+            RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD,
+        );
         m.insert_attribute(Mesh::ATTRIBUTE_POSITION, mesh.positions);
         m.insert_attribute(Mesh::ATTRIBUTE_NORMAL, mesh.normals);
         m.insert_attribute(Mesh::ATTRIBUTE_UV_0, mesh.uvs);
-        m.set_indices(Some(Indices::U32(mesh.indices)));
+        m.insert_indices(Indices::U32(mesh.indices));
         m
     }
 }
 
 fn generate_torus_body(mesh: &mut MeshData, torus: &Torus) {
-
     // This code is based on http://apparat-engine.blogspot.com/2013/04/procedural-meshes-torus.html
-    
+
     let angle_step_vertical = torus.tube_circumference / torus.tube_segments as f32;
     let angle_step_horizontal = torus.radial_circumference / torus.radial_segments as f32;
 
     // Add vertices ring by ring
     for horizontal_idx in 0..=torus.radial_segments {
-
         let theta_horizontal = angle_step_horizontal * horizontal_idx as f32 + torus.radial_offset;
 
         // The center of the vertical ring
         let ring_center = Vec3::new(
             torus.radius * f32::cos(theta_horizontal),
             0.0,
-            torus.radius * f32::sin(theta_horizontal)
+            torus.radius * f32::sin(theta_horizontal),
         );
 
         for vertical_idx in 0..=torus.tube_segments {
-
             let theta_vertical = angle_step_vertical * vertical_idx as f32 + torus.tube_offset;
 
             let position = Vec3::new(
-                f32::cos(theta_horizontal) * (torus.radius + torus.tube_radius * f32::cos(theta_vertical)),
+                f32::cos(theta_horizontal)
+                    * (torus.radius + torus.tube_radius * f32::cos(theta_vertical)),
                 f32::sin(theta_vertical) * torus.tube_radius,
-                f32::sin(theta_horizontal) * (torus.radius + torus.tube_radius * f32::cos(theta_vertical)),
+                f32::sin(theta_horizontal)
+                    * (torus.radius + torus.tube_radius * f32::cos(theta_vertical)),
             );
 
             // The normal points from the radius 0 torus to the actual point
@@ -121,7 +156,6 @@ fn generate_torus_body(mesh: &mut MeshData, torus: &Torus) {
 
     // Add indices for each face
     for horizontal_idx in 0..torus.radial_segments {
-
         let ring0_base_idx = horizontal_idx * (torus.tube_segments + 1);
         let ring1_base_idx = (horizontal_idx + 1) * (torus.tube_segments + 1);
 

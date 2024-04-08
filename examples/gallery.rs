@@ -1,21 +1,24 @@
 use bevy::app::App;
 use bevy::asset::{AssetServer, Assets};
-use bevy::input::Input;
+// use bevy::input::Input;
 use bevy::math::Vec3;
 use bevy::pbr::wireframe::{WireframeConfig, WireframePlugin};
 use bevy::pbr::{AmbientLight, DirectionalLight, NotShadowCaster, PbrBundle, StandardMaterial};
 use bevy::prelude::*;
-use bevy::render::settings::{WgpuFeatures, WgpuSettings};
-use bevy::text::{Text, TextAlignment, TextStyle};
+use bevy::render::settings::{RenderCreation, WgpuFeatures, WgpuSettings};
+use bevy::render::RenderPlugin;
+use bevy::scene::ron::de;
+use bevy::text::{JustifyText, Text, TextStyle};
 use bevy::ui::{AlignSelf, PositionType, Style, Val};
 use bevy::window::{CursorGrabMode, PrimaryWindow};
 use bevy::DefaultPlugins;
-use bevy::render::RenderPlugin;
-use bevy_normal_material::prelude::{NormalMaterial, NormalMaterialPlugin};
 use bevy_more_shapes::torus::Torus;
-use bevy_more_shapes::{Cone, Cylinder, Grid, Polygon};
-use smooth_bevy_cameras::controllers::fps::{FpsCameraBundle, FpsCameraController, FpsCameraPlugin};
 use bevy_more_shapes::tube::{Curve, Tube};
+use bevy_more_shapes::{Cone, Cylinder, Grid, Polygon};
+// use bevy_normal_material::prelude::{NormalMaterial, NormalMaterialPlugin};
+use smooth_bevy_cameras::controllers::fps::{
+    FpsCameraBundle, FpsCameraController, FpsCameraPlugin,
+};
 
 struct WaveFunction;
 
@@ -24,7 +27,7 @@ impl Curve for WaveFunction {
         Vec3::new(
             -f32::sin(t * std::f32::consts::PI * 2.0) * 0.2,
             t,
-            f32::sin(t * std::f32::consts::PI * 2.0) * 0.2
+            f32::sin(t * std::f32::consts::PI * 2.0) * 0.2,
         )
     }
 }
@@ -36,7 +39,6 @@ struct Knot {
 
 impl Curve for Knot {
     fn eval_at(&self, mut t: f32) -> Vec3 {
-
         t *= std::f32::consts::TAU * 2.0;
         let cu = f32::cos(t);
         let su = f32::sin(t);
@@ -56,7 +58,7 @@ fn spawn_shapes(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut normal_materials: ResMut<Assets<NormalMaterial>>,
+    // mut normal_materials: ResMut<Assets<NormalMaterial>>,
     mut wireframe_config: ResMut<WireframeConfig>,
     mut ambient_light: ResMut<AmbientLight>,
     asset_server: Res<AssetServer>,
@@ -88,10 +90,16 @@ fn spawn_shapes(
     // Default cone
     commands.spawn(MaterialMeshBundle {
         mesh: meshes.add(Mesh::from(Cone::default())),
-        material: normal_materials.add(NormalMaterial::default()),
+        material: materials.add(StandardMaterial::from(Color::ALICE_BLUE)),
         transform: Transform::from_xyz(0.0, 0.0, 5.0),
         ..Default::default()
     });
+    // commands.spawn(MaterialMeshBundle {
+    //     mesh: meshes.add(Mesh::from(Cone::default())),
+    //     material: normal_materials.add(NormalMaterial::default()),
+    //     transform: Transform::from_xyz(0.0, 0.0, 5.0),
+    //     ..Default::default()
+    // });
 
     // Big cone
     commands.spawn(PbrBundle {
@@ -176,7 +184,7 @@ fn spawn_shapes(
             radial_segments: 64,
             height_segments: 1,
         })),
-        material: normal_materials.add(NormalMaterial::default()),
+        material: materials.add(StandardMaterial::from(Color::PINK)),
         transform: Transform::from_xyz(2.0, 0.0, 9.0),
         ..Default::default()
     });
@@ -258,9 +266,12 @@ fn spawn_shapes(
 
     // Star
     commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::try_from(Polygon {
-            points: generate_star_shape(7, 0.7, 0.4),
-        }).unwrap()),
+        mesh: meshes.add(
+            Mesh::try_from(Polygon {
+                points: generate_star_shape(7, 0.7, 0.4),
+            })
+            .unwrap(),
+        ),
         material: materials.add(StandardMaterial::from(checkerboard_texture.clone())),
         transform: Transform::from_xyz(6.0, 0.0, 11.0),
         ..Default::default()
@@ -349,7 +360,7 @@ fn spawn_shapes(
         mat.cull_mode = None;
         commands.spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(Mesh::from(Torus {
-                radial_circumference: std::f32::consts::PI * 4.0/3.0,
+                radial_circumference: std::f32::consts::PI * 4.0 / 3.0,
                 tube_circumference: std::f32::consts::TAU,
                 ..Default::default()
             }))),
@@ -485,17 +496,13 @@ fn generate_star_shape(n: usize, radius_big: f32, radius_small: f32) -> Vec<Vec2
 
 // Spawn a UI layer with the controls and other useful info.
 fn spawn_info_text(mut commands: Commands, asset_server: Res<AssetServer>) {
-
     // Show text that presents the controls
     commands.spawn(TextBundle {
         style: Style {
             align_self: AlignSelf::FlexEnd,
             position_type: PositionType::Absolute,
-            position: UiRect {
-                top: Val::Px(10.0),
-                left: Val::Px(10.0),
-                ..Default::default()
-            },
+            top: Val::Px(10.0),
+            left: Val::Px(10.0),
             ..Default::default()
         },
         text: Text::from_section(
@@ -505,7 +512,7 @@ fn spawn_info_text(mut commands: Commands, asset_server: Res<AssetServer>) {
                 font_size: 15.0,
                 color: Color::WHITE,
             },
-        ).with_alignment(TextAlignment::Left),
+        ).with_justify(JustifyText::Left),
         ..Default::default()
     });
 }
@@ -527,10 +534,10 @@ fn spawn_camera(mut commands: Commands) {
 
 // Toggles global wireframe mode (all meshes) on a key press.
 fn toggle_wireframe_system(
-    keys: Res<Input<KeyCode>>,
+    keys: Res<ButtonInput<KeyCode>>,
     mut wireframe_config: ResMut<WireframeConfig>,
 ) {
-    if keys.just_pressed(KeyCode::X) {
+    if keys.just_pressed(KeyCode::KeyX) {
         wireframe_config.global = !wireframe_config.global;
     }
 }
@@ -582,8 +589,8 @@ impl Default for MouseLock {
 // Determines the correct lock state based on inputs. ESC to drop focus, click on the window to regain it.
 fn automatic_lock_system(
     mut lock: ResMut<MouseLock>,
-    keys: Res<Input<KeyCode>>,
-    mouse: Res<Input<MouseButton>>,
+    keys: Res<ButtonInput<KeyCode>>,
+    mouse: Res<ButtonInput<MouseButton>>,
 ) {
     // Automatic locking overridden, do nothing.
     if lock.override_default_lock_system {
@@ -604,11 +611,12 @@ fn automatic_lock_system(
 }
 
 // Observed the MouseLock status and updates the actual window config according to the status.
-fn update_lock(mut lock: ResMut<MouseLock>, mut primary_query: Query<&mut Window, With<PrimaryWindow>>) {
-
+fn update_lock(
+    mut lock: ResMut<MouseLock>,
+    mut primary_query: Query<&mut Window, With<PrimaryWindow>>,
+) {
     // Change detected
     if lock.lock != lock.last_lock {
-
         let mut window = primary_query.get_single_mut().unwrap();
 
         // Locking, save position
@@ -638,8 +646,8 @@ impl Plugin for MouseLockPlugin {
         app
             // Add default config
             .insert_resource(MouseLock::default())
-            .add_system(automatic_lock_system)
-            .add_system(update_lock.in_base_set(CoreSet::PostUpdate));
+            .add_systems(Update, automatic_lock_system)
+            .add_systems(PostUpdate, update_lock);
     }
 }
 
@@ -648,28 +656,30 @@ fn lock_camera(
     mut camera_controllers: Query<&mut FpsCameraController>,
 ) {
     // When the cursor is locked, we want the camera to be active. Otherwise keep it still.
-    camera_controllers.for_each_mut(|mut cam| cam.enabled = mouse_lock.lock);
+    camera_controllers
+        .iter_mut()
+        .for_each(|mut cam| cam.enabled = mouse_lock.lock);
 }
 
 fn main() {
     App::new()
         .insert_resource(Msaa::Sample4)
         .add_plugins(DefaultPlugins.set(RenderPlugin {
-            wgpu_settings: WgpuSettings {
+            render_creation: RenderCreation::Automatic(WgpuSettings {
                 // Wireframes require line mode
                 features: WgpuFeatures::POLYGON_MODE_LINE,
                 ..default()
-            },
+            }),
+            ..default()
         }))
-        .add_plugin(smooth_bevy_cameras::LookTransformPlugin)
-        .add_plugin(FpsCameraPlugin::default())
-        .add_plugin(WireframePlugin)
-        .add_plugin(MouseLockPlugin)
-        .add_plugin(NormalMaterialPlugin)
-        .add_startup_system(spawn_camera)
-        .add_startup_system(spawn_shapes)
-        .add_startup_system(spawn_info_text)
-        .add_system(toggle_wireframe_system)
-        .add_system(lock_camera)
+        .add_plugins((
+            smooth_bevy_cameras::LookTransformPlugin,
+            FpsCameraPlugin::default(),
+            WireframePlugin,
+            MouseLockPlugin,
+        ))
+        // .add_plugin(NormalMaterialPlugin)
+        .add_systems(Startup, (spawn_camera, spawn_shapes, spawn_info_text))
+        .add_systems(Update, (toggle_wireframe_system, lock_camera))
         .run();
 }

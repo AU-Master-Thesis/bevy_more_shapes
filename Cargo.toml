@@ -13,13 +13,14 @@ exclude = ["/assets/screenshots/**"]
 
 [dependencies]
 # The parts of bevy relevant to meshes and shapes as well as math
-bevy = { version = "0.10", features = ["bevy_render"] }
+bevy = { version = "0.13", features = ["bevy_render"] }
 # This crate is used to triangulate polygons.
 triangulate = "0.2.0"
 
 [dev-dependencies]
 # For the showcase we need the full capabilities of the engine.
-bevy = "0.10"
+bevy = "0.13"
 # First person camera controller
-smooth-bevy-cameras = "0.8"
-bevy_normal_material = "0.2.1"
+smooth-bevy-cameras = "0.11"
+# bevy_normal_material = "0.2.1"
+bevy_normal_material = { git = "https://github.com/AU-Master-Thesis/bevy_normal_material", branch = "bevy-v0.13.0" }
