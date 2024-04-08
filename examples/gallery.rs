@@ -451,7 +451,7 @@ fn spawn_shapes(
     // Sky
     commands.spawn((
         PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Box::default())),
+            mesh: meshes.add(Mesh::from(Cuboid::default())),
             material: materials.add(StandardMaterial {
                 base_color: Color::hex("111111").unwrap(),
                 unlit: true,
