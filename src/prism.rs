@@ -46,19 +46,43 @@ impl From<Prism> for Mesh {
         }
 
         // Indices
+        // for i in 0..prism.points.len() {
+        //     let next_i = (i + 1) % prism.points.len();
+        //     let bottom_i = base_index + i as u32;
+        //     let top_i = base_index + prism.points.len() as u32 + i as u32;
+
+        //     mesh.indices.push(bottom_i);
+        //     mesh.indices.push(top_i);
+        //     mesh.indices.push(base_index + next_i as u32);
+
+        //     mesh.indices.push(base_index + next_i as u32);
+        //     mesh.indices.push(top_i);
+        //     mesh.indices
+        //         .push(base_index + prism.points.len() as u32 + next_i as u32);
+        // }
         for i in 0..prism.points.len() {
             let next_i = (i + 1) % prism.points.len();
             let bottom_i = base_index + i as u32;
             let top_i = base_index + prism.points.len() as u32 + i as u32;
+            let top_next_i = base_index + prism.points.len() as u32 + next_i as u32; // New
 
+            // Bottom face triangles
             mesh.indices.push(bottom_i);
             mesh.indices.push(top_i);
             mesh.indices.push(base_index + next_i as u32);
 
+            mesh.indices.push(bottom_i); // Additional for bottom
+            mesh.indices.push(base_index + next_i as u32); // Additional for bottom
+            mesh.indices.push(top_next_i); // Additional for bottom
+
+            // Top face triangles
             mesh.indices.push(base_index + next_i as u32);
             mesh.indices.push(top_i);
-            mesh.indices
-                .push(base_index + prism.points.len() as u32 + next_i as u32);
+            mesh.indices.push(top_next_i);
+
+            mesh.indices.push(top_i); // Additional for top
+            mesh.indices.push(top_next_i); // Additional for top
+            mesh.indices.push(bottom_i); // Additional for top
         }
 
         let mut m = Mesh::new(
