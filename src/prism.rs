@@ -93,9 +93,11 @@ impl TryFrom<Prism> for Mesh {
             RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD,
         );
         m.insert_attribute(Mesh::ATTRIBUTE_POSITION, mesh.positions);
-        m.insert_attribute(Mesh::ATTRIBUTE_NORMAL, mesh.normals);
+        // m.insert_attribute(Mesh::ATTRIBUTE_NORMAL, mesh.normals);
         m.insert_attribute(Mesh::ATTRIBUTE_UV_0, mesh.uvs);
         m.insert_indices(Indices::U32(mesh.indices));
+        m.duplicate_vertices();
+        m.compute_flat_normals();
         Ok(m)
     }
 }
