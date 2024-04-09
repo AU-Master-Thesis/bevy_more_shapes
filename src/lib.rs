@@ -2,6 +2,7 @@ pub mod cone;
 pub mod cylinder;
 pub mod grid;
 pub mod polygon;
+pub mod prism;
 pub mod torus;
 pub mod tube;
 pub(crate) mod util;
@@ -24,9 +25,10 @@ impl MeshData {
     }
 }
 
-use bevy::prelude::{Vec2, Vec3};
 pub use crate::cone::Cone;
 pub use crate::cylinder::Cylinder;
 pub use crate::grid::Grid;
 pub use crate::polygon::Polygon;
+pub use crate::prism::Prism;
 pub use crate::torus::Torus;
+use bevy::prelude::{Vec2, Vec3};
