@@ -7,6 +7,8 @@ use std::fmt::{Display, Formatter};
 use triangulate::formats::IndexedListFormat;
 use triangulate::{ListFormat, TriangulationError, Vertex};
 
+use crate::util::{InvalidInput, Vec2f};
+
 pub struct Polygon {
     /// Points on a path where the last and first point are connected to form a closed circle.
     /// Must not intersect. Must contain enough points.
@@ -66,52 +68,6 @@ fn bounding_rect_for_points<'a>(points: impl Iterator<Item = &'a Vec2>) -> Rect 
     Rect {
         min: Vec2::new(x_min, y_min),
         max: Vec2::new(x_max, y_max),
-    }
-}
-
-// This is an ugly workaround for rust's orphan rule. Neither Vec2 nor the Vertex trait come from this crate.
-// So we need to implement a newtype and hope it gets optimized away (which it should).
-#[derive(Debug, Copy, Clone)]
-struct Vec2f(Vec2);
-
-impl Vertex for Vec2f {
-    type Coordinate = f32;
-
-    fn x(&self) -> Self::Coordinate {
-        self.0.x
-    }
-
-    fn y(&self) -> Self::Coordinate {
-        self.0.y
-    }
-}
-
-/// The input must not be empty.
-/// No edge can cross any other edge, whether it is on the same polygon or not.
-/// Each vertex must be part of exactly two edges. Polygons cannot 'share' vertices with each other.
-/// Each vertex must be distinct - no vertex can have x and y coordinates that both compare equal to another vertex's.
-#[derive(Debug)]
-pub struct InvalidInput;
-
-impl Display for InvalidInput {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Invalid polygon input")
-    }
-}
-
-impl Error for InvalidInput {}
-
-impl<T: Error> From<TriangulationError<T>> for InvalidInput {
-    fn from(value: TriangulationError<T>) -> Self {
-        match value {
-            TriangulationError::TrapezoidationError(_) => {
-                panic!("Failed to triangulate: {}", value)
-            }
-            TriangulationError::NoVertices => Self,
-            TriangulationError::InternalError(_) => Self,
-            TriangulationError::FanBuilder(_) => panic!("Failed to triangulate: {}", value),
-            _ => panic!("Failed to triangulate: {}", value),
-        }
     }
 }
 

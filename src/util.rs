@@ -1,4 +1,10 @@
-use bevy::prelude::Vec3;
+use std::{
+    error::Error,
+    fmt::{Display, Formatter},
+};
+
+use bevy::{math::Vec2, prelude::Vec3};
+use triangulate::{TriangulationError, Vertex};
 
 // When indexing a mesh we commonly find flat (occupying a 2 dimensional subspace) trapezes.
 #[derive(Copy, Clone)]
@@ -10,7 +16,6 @@ pub(crate) struct FlatTrapezeIndices {
 }
 
 impl FlatTrapezeIndices {
-
     // Triangulate the trapeze
     pub fn generate_triangles(&self, indices: &mut Vec<u32>) {
         indices.push(self.upper_left);
@@ -51,5 +56,51 @@ impl Extent {
 
     pub fn center(&self) -> Vec3 {
         self.min + (self.max - self.min) / 2.0
+    }
+}
+
+// This is an ugly workaround for rust's orphan rule. Neither Vec2 nor the Vertex trait come from this crate.
+// So we need to implement a newtype and hope it gets optimized away (which it should).
+#[derive(Debug, Copy, Clone)]
+pub struct Vec2f(pub Vec2);
+
+impl Vertex for Vec2f {
+    type Coordinate = f32;
+
+    fn x(&self) -> Self::Coordinate {
+        self.0.x
+    }
+
+    fn y(&self) -> Self::Coordinate {
+        self.0.y
+    }
+}
+
+/// The input must not be empty.
+/// No edge can cross any other edge, whether it is on the same polygon or not.
+/// Each vertex must be part of exactly two edges. Polygons cannot 'share' vertices with each other.
+/// Each vertex must be distinct - no vertex can have x and y coordinates that both compare equal to another vertex's.
+#[derive(Debug)]
+pub struct InvalidInput;
+
+impl Display for InvalidInput {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Invalid polygon input")
+    }
+}
+
+impl Error for InvalidInput {}
+
+impl<T: Error> From<TriangulationError<T>> for InvalidInput {
+    fn from(value: TriangulationError<T>) -> Self {
+        match value {
+            TriangulationError::TrapezoidationError(_) => {
+                panic!("Failed to triangulate: {}", value)
+            }
+            TriangulationError::NoVertices => Self,
+            TriangulationError::InternalError(_) => Self,
+            TriangulationError::FanBuilder(_) => panic!("Failed to triangulate: {}", value),
+            _ => panic!("Failed to triangulate: {}", value),
+        }
     }
 }
