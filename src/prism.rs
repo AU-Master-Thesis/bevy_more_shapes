@@ -78,12 +78,15 @@ impl TryFrom<Prism> for Mesh {
             .map(|v| v as u32)
             .collect();
 
-        mesh.indices.extend(indices.clone());
-        mesh.indices.extend(
-            indices
-                .into_iter()
-                .map(|i| i + (prism.points.len() / 2) as u32),
-        );
+        let bottom_indices = indices.clone().into_iter().rev().collect::<Vec<u32>>();
+        let top_indices = indices
+            .into_iter()
+            .map(|i| i + (prism.points.len() as u32))
+            .collect::<Vec<u32>>();
+        println!("bottom_indices = {:?}", bottom_indices);
+        println!("top_indices = {:?}", top_indices);
+        mesh.indices.extend(bottom_indices);
+        mesh.indices.extend(top_indices);
 
         let mut m = Mesh::new(
             PrimitiveTopology::TriangleList,

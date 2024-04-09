@@ -6,7 +6,7 @@ use bevy::render::RenderPlugin;
 use bevy::window::{CursorGrabMode, PrimaryWindow};
 use bevy_more_shapes::torus::Torus;
 use bevy_more_shapes::tube::{Curve, Tube};
-use bevy_more_shapes::{Cone, Cylinder, Grid, Polygon};
+use bevy_more_shapes::{Cone, Cylinder, Grid, Polygon, Prism};
 // use bevy_normal_material::prelude::{NormalMaterial, NormalMaterialPlugin};
 use smooth_bevy_cameras::controllers::fps::{
     FpsCameraBundle, FpsCameraController, FpsCameraPlugin,
@@ -266,6 +266,24 @@ fn spawn_shapes(
         ),
         material: materials.add(StandardMaterial::from(checkerboard_texture.clone())),
         transform: Transform::from_xyz(6.0, 0.0, 11.0),
+        ..Default::default()
+    });
+
+    // Prism
+    commands.spawn(PbrBundle {
+        mesh: meshes.add(
+            Mesh::try_from(Prism::new(
+                2.0,
+                vec![
+                    Vec2::new(0.0, 0.0),
+                    Vec2::new(0.5, 0.0),
+                    Vec2::new(0.5, 0.5),
+                ],
+            ))
+            .unwrap(),
+        ),
+        material: materials.add(StandardMaterial::from(Color::ORANGE)),
+        transform: Transform::from_xyz(6.0, 0.0, 13.0),
         ..Default::default()
     });
 
